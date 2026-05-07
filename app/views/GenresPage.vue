@@ -5,16 +5,16 @@ import type { TableColumn } from '@nuxt/ui'
 definePageMeta({ title: 'Genres' })
 
 const UButton = resolveComponent('UButton')
-const toast   = useToast()
-const api     = useApi()
+const toast = useToast()
+const api = useApi()
 
-interface Genre { id: number; name: string }
+interface Genre { id: number, name: string }
 
-const loading  = ref(false)
-const genres   = ref<Genre[]>([])
-const isOpen   = ref(false)
+const loading = ref(false)
+const genres = ref<Genre[]>([])
+const isOpen = ref(false)
 const isSaving = ref(false)
-const name     = ref('')
+const name = ref('')
 
 async function fetchGenres() {
   loading.value = true
@@ -39,8 +39,9 @@ async function save() {
     isOpen.value = false
     name.value = ''
     fetchGenres()
-  } catch (e: any) {
-    const msg = e?.data?.details?.name ?? 'Failed to save'
+  } catch (e: unknown) {
+    const error = e as { data?: { details?: { name?: string } } }
+    const msg = error.data?.details?.name ?? 'Failed to save'
     toast.add({ title: msg, color: 'error' })
   } finally {
     isSaving.value = false
@@ -63,9 +64,9 @@ const columns: TableColumn<Genre>[] = [
     id: 'actions',
     header: '',
     cell: ({ row }) => h('div', { class: 'flex justify-end' }, [
-      h(UButton, { icon: 'i-lucide-trash-2', color: 'error', variant: 'ghost', size: 'xs', onClick: () => remove(row.original) }),
-    ]),
-  },
+      h(UButton, { icon: 'i-lucide-trash-2', color: 'error', variant: 'ghost', size: 'xs', onClick: () => remove(row.original) })
+    ])
+  }
 ]
 </script>
 
@@ -77,23 +78,39 @@ const columns: TableColumn<Genre>[] = [
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <UButton icon="i-lucide-plus" @click="isOpen = true">Add Genre</UButton>
+          <UButton icon="i-lucide-plus" @click="isOpen = true">
+            Add Genre
+          </UButton>
         </template>
       </UDashboardNavbar>
     </template>
 
-    <UTable :data="genres" :columns="columns" :loading="loading" class="w-full" />
+    <UTable
+      :data="genres"
+      :columns="columns"
+      :loading="loading"
+      class="w-full"
+    />
 
     <UModal v-model:open="isOpen" title="Add Genre">
       <template #body>
         <UFormField label="Genre name" required>
-          <UInput v-model="name" placeholder="e.g. Horror" class="w-full" @keyup.enter="save" />
+          <UInput
+            v-model="name"
+            placeholder="e.g. Horror"
+            class="w-full"
+            @keyup.enter="save"
+          />
         </UFormField>
       </template>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton color="neutral" variant="ghost" @click="isOpen = false">Cancel</UButton>
-          <UButton :loading="isSaving" :disabled="!name.trim()" @click="save">Add</UButton>
+          <UButton color="neutral" variant="ghost" @click="isOpen = false">
+            Cancel
+          </UButton>
+          <UButton :loading="isSaving" :disabled="!name.trim()" @click="save">
+            Add
+          </UButton>
         </div>
       </template>
     </UModal>

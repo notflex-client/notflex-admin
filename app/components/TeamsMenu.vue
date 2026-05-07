@@ -14,8 +14,14 @@ defineProps<{
     :ui="{ leadingIcon: 'text-primary' }"
   >
     <template #leading>
-      <svg width="20" height="20" viewBox="0 0 111 152" fill="none" aria-hidden="true">
-        <path d="M0 0h28.5l54 139.5V0H111v152H83L28.5 12V152H0V0Z" fill="#E50914"/>
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 111 152"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path d="M0 0h28.5l54 139.5V0H111v152H83L28.5 12V152H0V0Z" fill="#E50914" />
       </svg>
     </template>
     <span v-if="!collapsed" class="font-bold tracking-widest text-sm">NOTFLEX</span>
