@@ -7,17 +7,24 @@ defineProps<{
 
 const colorMode = useColorMode()
 const appConfig = useAppConfig()
+const auth = useAuth()
+const router = useRouter()
 
 const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
 const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 
-const user = ref({
-  name: 'Benjamin Canac',
+const user = computed(() => ({
+  name: auth.user.value?.full_name || auth.user.value?.email || 'Admin',
   avatar: {
-    src: 'https://github.com/benjamincanac.png',
-    alt: 'Benjamin Canac'
+    src: auth.user.value?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(auth.user.value?.full_name || 'Admin')}&background=ef4444&color=fff`,
+    alt: auth.user.value?.full_name || 'Admin'
   }
-})
+}))
+
+async function signOut() {
+  await auth.logout()
+  router.push('/login')
+}
 
 const items = computed<DropdownMenuItem[][]>(() => ([[{
   type: 'label',
@@ -147,7 +154,8 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   target: '_blank'
 }, {
   label: 'Log out',
-  icon: 'i-lucide-log-out'
+  icon: 'i-lucide-log-out',
+  onSelect: signOut
 }]]))
 </script>
 

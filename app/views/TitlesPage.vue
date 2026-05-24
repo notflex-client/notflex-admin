@@ -217,11 +217,19 @@ const columns: TableColumn<Title>[] = [
     id: 'actions',
     header: '',
     cell: ({ row }) => h('div', { class: 'flex gap-2 justify-end' }, [
+      h(UButton, { icon: 'i-lucide-captions', color: 'neutral', variant: 'ghost', size: 'xs', onClick: () => openTracks(row.original) }),
       h(UButton, { icon: 'i-lucide-pencil', color: 'neutral', variant: 'ghost', size: 'xs', onClick: () => openEdit(row.original) }),
       h(UButton, { icon: 'i-lucide-trash-2', color: 'error', variant: 'ghost', size: 'xs', onClick: () => remove(row.original) })
     ])
   }
 ]
+
+const tracksOpen = ref(false)
+const tracksMovie = ref<Title | null>(null)
+function openTracks(title: Title) {
+  tracksMovie.value = title
+  tracksOpen.value = true
+}
 
 const genreItems = computed(() => allGenres.value.map(g => ({ label: g.name, value: g.id })))
 const tagItems = computed(() => allTags.value.map(t => ({ label: t.name, value: t.id })))
@@ -235,18 +243,37 @@ const tagItems = computed(() => allTags.value.map(t => ({ label: t.name, value: 
           <UDashboardSidebarCollapse />
         </template>
         <template #right>
-          <UInput
-            v-model="search"
-            placeholder="Search..."
-            icon="i-lucide-search"
-            class="w-52"
-          />
-          <UButton icon="i-lucide-plus" @click="openAdd">
-            Add Title
-          </UButton>
+          <div class="flex items-center gap-2">
+            <UInput
+              v-model="search"
+              placeholder="Search..."
+              icon="i-lucide-search"
+              class="w-52"
+            />
+            <UButton icon="i-lucide-plus" color="primary" @click="openAdd">
+              Add Title
+            </UButton>
+          </div>
         </template>
       </UDashboardNavbar>
     </template>
+
+    <div class="flex items-center justify-between gap-2 px-6 py-4 border-b border-default">
+      <h1 class="text-xl font-semibold">
+        Titles
+      </h1>
+      <div class="flex items-center gap-2">
+        <UInput
+          v-model="search"
+          placeholder="Search..."
+          icon="i-lucide-search"
+          class="w-64"
+        />
+        <UButton icon="i-lucide-plus" color="primary" @click="openAdd">
+          Add Title
+        </UButton>
+      </div>
+    </div>
 
     <UTable
       :data="titles"
@@ -277,7 +304,7 @@ const tagItems = computed(() => allTags.value.map(t => ({ label: t.name, value: 
           </UFormField>
           <UFormField label="Year">
             <UInput
-              v-model="form.release_year"
+              :v-model="form.release_year"
               placeholder="2024"
               type="number"
               class="w-full"
@@ -286,7 +313,14 @@ const tagItems = computed(() => allTags.value.map(t => ({ label: t.name, value: 
           <UFormField label="Rating">
             <UInput v-model="form.rating" placeholder="TV-MA / PG-13 / R" class="w-full" />
           </UFormField>
-          <UFormField label="Video File" class="col-span-2">
+          <UFormField label="Video URL" class="col-span-2" hint="Paste .mp4 or .m3u8 link directly">
+            <UInput
+              v-model="form.video_url"
+              placeholder="https://example.com/video.m3u8"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField label="Or upload from device" class="col-span-2">
             <div class="space-y-2">
               <UInput
                 type="file"
@@ -295,9 +329,6 @@ const tagItems = computed(() => allTags.value.map(t => ({ label: t.name, value: 
                 :disabled="isUploading"
                 @change="uploadVideo"
               />
-              <div v-if="form.video_url" class="text-xs text-muted truncate">
-                {{ form.video_url }}
-              </div>
               <div v-if="isUploading" class="text-xs text-muted">
                 Uploading video...
               </div>
@@ -355,5 +386,12 @@ const tagItems = computed(() => allTags.value.map(t => ({ label: t.name, value: 
         </div>
       </template>
     </UModal>
+
+    <TracksManager
+      v-if="tracksMovie"
+      v-model:open="tracksOpen"
+      :movie-id="tracksMovie.id"
+      :movie-title="tracksMovie.title"
+    />
   </UDashboardPanel>
 </template>
