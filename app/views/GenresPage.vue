@@ -14,13 +14,14 @@ const loading = ref(false)
 const genres = ref<Genre[]>([])
 const isOpen = ref(false)
 const isSaving = ref(false)
-const name = ref('')
+const editing = ref<Genre | null>(null)
+const form = reactive({ name: '' })
 
 async function fetchGenres() {
   loading.value = true
   try {
-    const res = await api.get<{ data: Genre[] }>('/genres')
-    genres.value = res.data ?? []
+    const res = await api.get<Genre[]>('/genres')
+    genres.value = Array.isArray(res) ? res : []
   } catch {
     toast.add({ title: 'Failed to load genres', color: 'error' })
   } finally {
@@ -30,27 +31,44 @@ async function fetchGenres() {
 
 onMounted(fetchGenres)
 
+function openCreate() {
+  editing.value = null
+  form.name = ''
+  isOpen.value = true
+}
+
+function openEdit(genre: Genre) {
+  editing.value = genre
+  form.name = genre.name
+  isOpen.value = true
+}
+
 async function save() {
-  if (!name.value.trim()) return
+  if (!form.name.trim()) return
   isSaving.value = true
   try {
-    await api.post('/genres', { name: name.value.trim() })
-    toast.add({ title: 'Genre added', color: 'success' })
+    if (editing.value) {
+      await api.put(`/admin/genres/${editing.value.id}`, { name: form.name.trim() })
+      toast.add({ title: 'Genre updated', color: 'success' })
+    } else {
+      await api.post('/admin/genres', { name: form.name.trim() })
+      toast.add({ title: 'Genre created', color: 'success' })
+    }
     isOpen.value = false
-    name.value = ''
     fetchGenres()
   } catch (e: unknown) {
-    const error = e as { data?: { details?: { name?: string } } }
-    const msg = error.data?.details?.name ?? 'Failed to save'
+    const error = e as { data?: { details?: Record<string, string>, message?: string } }
+    const msg = error.data?.details?.name ?? error.data?.message ?? 'Failed to save'
     toast.add({ title: msg, color: 'error' })
   } finally {
     isSaving.value = false
   }
 }
 
-async function remove(row: Genre) {
+async function remove(genre: Genre) {
+  if (!confirm(`Delete genre "${genre.name}"?`)) return
   try {
-    await api.del(`/genres/${row.id}`)
+    await api.del(`/admin/genres/${genre.id}`)
     toast.add({ title: 'Deleted', color: 'success' })
     fetchGenres()
   } catch {
@@ -59,14 +77,16 @@ async function remove(row: Genre) {
 }
 
 const columns: TableColumn<Genre>[] = [
+  { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'name', header: 'Name' },
   {
     id: 'actions',
     header: '',
-    cell: ({ row }) => h('div', { class: 'flex justify-end' }, [
-      h(UButton, { icon: 'i-lucide-trash-2', color: 'error', variant: 'ghost', size: 'xs', onClick: () => remove(row.original) })
-    ])
-  }
+    cell: ({ row }) => h('div', { class: 'flex justify-end gap-1' }, [
+      h(UButton, { icon: 'i-lucide-pencil', color: 'neutral', variant: 'ghost', size: 'xs', onClick: () => openEdit(row.original) }),
+      h(UButton, { icon: 'i-lucide-trash-2', color: 'error', variant: 'ghost', size: 'xs', onClick: () => remove(row.original) }),
+    ]),
+  },
 ]
 </script>
 
@@ -77,27 +97,26 @@ const columns: TableColumn<Genre>[] = [
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
-        <template #right>
-          <UButton icon="i-lucide-plus" @click="isOpen = true">
-            Add Genre
-          </UButton>
-        </template>
       </UDashboardNavbar>
     </template>
 
-    <UTable
-      :data="genres"
-      :columns="columns"
-      :loading="loading"
-      class="w-full"
-    />
+    <div class="flex items-center justify-between gap-2 px-6 py-4 border-b border-default">
+      <h1 class="text-xl font-semibold">
+        Genres
+      </h1>
+      <UButton icon="i-lucide-plus" color="primary" @click="openCreate">
+        Add Genre
+      </UButton>
+    </div>
 
-    <UModal v-model:open="isOpen" title="Add Genre">
+    <UTable :data="genres" :columns="columns" :loading="loading" class="w-full" />
+
+    <UModal v-model:open="isOpen" :title="editing ? 'Edit Genre' : 'Add Genre'">
       <template #body>
-        <UFormField label="Genre name" required>
+        <UFormField label="Name" required>
           <UInput
-            v-model="name"
-            placeholder="e.g. Horror"
+            v-model="form.name"
+            placeholder="e.g. Action"
             class="w-full"
             @keyup.enter="save"
           />
@@ -108,8 +127,8 @@ const columns: TableColumn<Genre>[] = [
           <UButton color="neutral" variant="ghost" @click="isOpen = false">
             Cancel
           </UButton>
-          <UButton :loading="isSaving" :disabled="!name.trim()" @click="save">
-            Add
+          <UButton :loading="isSaving" :disabled="!form.name.trim()" @click="save">
+            {{ editing ? 'Save' : 'Add' }}
           </UButton>
         </div>
       </template>

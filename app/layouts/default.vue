@@ -24,6 +24,26 @@ const links = [[{
   to: '/genres',
   onSelect: () => { open.value = false }
 }, {
+  label: 'Tags',
+  icon: 'i-lucide-hash',
+  to: '/tags',
+  onSelect: () => { open.value = false }
+}, {
+  label: 'Plans',
+  icon: 'i-lucide-credit-card',
+  to: '/plans',
+  onSelect: () => { open.value = false }
+}, {
+  label: 'Banners',
+  icon: 'i-lucide-image',
+  to: '/banners',
+  onSelect: () => { open.value = false }
+}, {
+  label: 'Payments',
+  icon: 'i-lucide-receipt',
+  to: '/payments',
+  onSelect: () => { open.value = false }
+}, {
   label: 'Settings',
   to: '/settings',
   icon: 'i-lucide-settings',

@@ -9,6 +9,11 @@ export default {
         component: () => import('~/views/HomePage.vue')
       },
       {
+        path: '/login',
+        component: () => import('~/views/LoginPage.vue'),
+        meta: { layout: false }
+      },
+      {
         path: '/titles',
         component: () => import('~/views/TitlesPage.vue')
       },
@@ -19,6 +24,22 @@ export default {
       {
         path: '/users',
         component: () => import('~/views/UsersPage.vue')
+      },
+      {
+        path: '/tags',
+        component: () => import('~/views/TagsPage.vue')
+      },
+      {
+        path: '/plans',
+        component: () => import('~/views/PlansPage.vue')
+      },
+      {
+        path: '/banners',
+        component: () => import('~/views/BannersPage.vue')
+      },
+      {
+        path: '/payments',
+        component: () => import('~/views/PaymentsPage.vue')
       },
       {
         path: '/settings',
