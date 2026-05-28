@@ -16,9 +16,17 @@ interface Banner {
   description: string
   image_url: string
   link_url: string
+  page: string
   position: number
   is_active: boolean
 }
+
+const PAGE_OPTIONS = [
+  { label: 'Home (Browse)',    value: 'browse' },
+  { label: 'Films',           value: 'films' },
+  { label: 'Series',          value: 'series' },
+  { label: 'New & Popular',   value: 'new-and-popular' },
+]
 
 const config = useRuntimeConfig()
 const apiBase = (config.public.apiUrl as string) || 'http://localhost:8080'
@@ -35,6 +43,7 @@ const form = reactive({
   description: '',
   image_url: '',
   link_url: '',
+  page: 'browse',
   position: 0,
   is_active: true,
 })
@@ -66,6 +75,7 @@ function openCreate() {
   form.description = ''
   form.image_url = ''
   form.link_url = ''
+  form.page = 'browse'
   form.position = 0
   form.is_active = true
   isOpen.value = true
@@ -78,6 +88,7 @@ function openEdit(banner: Banner) {
   form.description = banner.description ?? ''
   form.image_url = banner.image_url
   form.link_url = banner.link_url
+  form.page = banner.page || 'browse'
   form.position = banner.position
   form.is_active = banner.is_active
   isOpen.value = true
@@ -113,6 +124,7 @@ async function save() {
       description: form.description.trim(),
       image_url: form.image_url.trim(),
       link_url: form.link_url.trim(),
+      page: form.page || 'browse',
       position: Number(form.position),
       is_active: form.is_active,
     }
@@ -151,7 +163,14 @@ const columns: TableColumn<Banner>[] = [
     cell: ({ row }) => h('img', { src: fullImageUrl(row.original.image_url), class: 'w-24 h-12 object-cover rounded' })
   },
   { accessorKey: 'title', header: 'Title' },
-  { accessorKey: 'position', header: 'Position' },
+  {
+    accessorKey: 'page',
+    header: 'Page',
+    cell: ({ row }) => h(UBadge, { color: 'neutral', variant: 'subtle' }, () =>
+      PAGE_OPTIONS.find(p => p.value === row.original.page)?.label ?? row.original.page
+    )
+  },
+  { accessorKey: 'position', header: 'Pos' },
   {
     accessorKey: 'is_active',
     header: 'Status',
@@ -226,6 +245,16 @@ const columns: TableColumn<Banner>[] = [
 
           <UFormField label="Image URL (optional)" hint="Use this if you don't want to upload — paste a direct image link">
             <UInput v-model="form.image_url" placeholder="https://..." class="w-full" />
+          </UFormField>
+
+          <UFormField label="Page" required>
+            <USelect
+              v-model="form.page"
+              :items="PAGE_OPTIONS"
+              value-key="value"
+              label-key="label"
+              class="w-full"
+            />
           </UFormField>
 
           <UFormField label="Movie ID (optional)">

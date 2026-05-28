@@ -45,6 +45,7 @@ const form = reactive({
   type: 'movie' as 'movie' | 'series',
   release_year: '' as string | number,
   rating: '',
+  language: '',
   video_url: '',
   poster_url: '',
   banner_url: '',
@@ -101,7 +102,7 @@ watch([page, search], fetchTitles)
 // ── Modal ─────────────────────────────────────────────────────
 function openAdd() {
   selected.value = null
-  Object.assign(form, { title: '', type: 'movie', release_year: '', rating: '', video_url: '', poster_url: '', banner_url: '', description: '', is_premium: true, genre_ids: [], tag_ids: [] })
+  Object.assign(form, { title: '', type: 'movie', release_year: '', rating: '', language: '', video_url: '', poster_url: '', banner_url: '', description: '', is_premium: true, genre_ids: [], tag_ids: [] })
   isOpen.value = true
 }
 
@@ -112,6 +113,7 @@ function openEdit(row: Title) {
     type: row.type,
     release_year: row.release_year ?? '',
     rating: row.rating ?? '',
+    language: (row as any).language ?? '',
     video_url: row.video_url ?? '',
     poster_url: row.poster_url ?? '',
     banner_url: row.banner_url ?? '',
@@ -123,15 +125,25 @@ function openEdit(row: Title) {
   isOpen.value = true
 }
 
+function extractIds(arr: unknown[]): number[] {
+  return arr
+    .map(x => (x !== null && typeof x === 'object' ? (x as any).value ?? (x as any).id : x))
+    .map(Number)
+    .filter(n => !Number.isNaN(n))
+}
+
 function buildPayload() {
   return {
     ...form,
     release_year: form.release_year ? Number(form.release_year) : null,
+    language: form.language || null,
     video_url: form.video_url || null,
     poster_url: form.poster_url || null,
     banner_url: form.banner_url || null,
     description: form.description || null,
-    rating: form.rating || null
+    rating: form.rating || null,
+    genre_ids: extractIds(form.genre_ids as unknown[]),
+    tag_ids: extractIds(form.tag_ids as unknown[]),
   }
 }
 
@@ -169,11 +181,16 @@ async function save() {
     if (selected.value) {
       await api.put(`/admin/movies/${selected.value.id}`, payload)
       toast.add({ title: 'Title updated', color: 'success' })
+      isOpen.value = false
     } else {
-      await api.post('/admin/movies', payload)
+      const created = await api.post<Title>('/admin/movies', payload)
       toast.add({ title: 'Title added', color: 'success' })
+      isOpen.value = false
+      if (form.type === 'series' && created?.id) {
+        episodesMovie.value = created
+        episodesOpen.value = true
+      }
     }
-    isOpen.value = false
     fetchTitles()
   } catch {
     toast.add({ title: 'Failed to save', color: 'error' })
@@ -214,9 +231,23 @@ const columns: TableColumn<Title>[] = [
     cell: ({ row }) => row.getValue('rating') ?? '—'
   },
   {
+    id: 'tags',
+    header: 'Tags',
+    cell: ({ row }) => {
+      const tags = row.original.tags ?? []
+      if (!tags.length) return h('span', { class: 'text-(--ui-text-muted) text-xs' }, '—')
+      return h('div', { class: 'flex flex-wrap gap-1' },
+        tags.map(t => h(UBadge, { key: t.id, color: 'neutral', variant: 'subtle', size: 'xs' }, () => t.name))
+      )
+    }
+  },
+  {
     id: 'actions',
     header: '',
     cell: ({ row }) => h('div', { class: 'flex gap-2 justify-end' }, [
+      row.original.type === 'series'
+        ? h(UButton, { icon: 'i-lucide-list-video', color: 'neutral', variant: 'ghost', size: 'xs', title: 'Manage episodes', onClick: () => openEpisodes(row.original) })
+        : null,
       h(UButton, { icon: 'i-lucide-captions', color: 'neutral', variant: 'ghost', size: 'xs', onClick: () => openTracks(row.original) }),
       h(UButton, { icon: 'i-lucide-pencil', color: 'neutral', variant: 'ghost', size: 'xs', onClick: () => openEdit(row.original) }),
       h(UButton, { icon: 'i-lucide-trash-2', color: 'error', variant: 'ghost', size: 'xs', onClick: () => remove(row.original) })
@@ -229,6 +260,13 @@ const tracksMovie = ref<Title | null>(null)
 function openTracks(title: Title) {
   tracksMovie.value = title
   tracksOpen.value = true
+}
+
+const episodesOpen = ref(false)
+const episodesMovie = ref<Title | null>(null)
+function openEpisodes(title: Title) {
+  episodesMovie.value = title
+  episodesOpen.value = true
 }
 
 const genreItems = computed(() => allGenres.value.map(g => ({ label: g.name, value: g.id })))
@@ -304,7 +342,7 @@ const tagItems = computed(() => allTags.value.map(t => ({ label: t.name, value: 
           </UFormField>
           <UFormField label="Year">
             <UInput
-              :v-model="form.release_year"
+              v-model="form.release_year"
               placeholder="2024"
               type="number"
               class="w-full"
@@ -313,27 +351,86 @@ const tagItems = computed(() => allTags.value.map(t => ({ label: t.name, value: 
           <UFormField label="Rating">
             <UInput v-model="form.rating" placeholder="TV-MA / PG-13 / R" class="w-full" />
           </UFormField>
-          <UFormField label="Video URL" class="col-span-2" hint="Paste .mp4 or .m3u8 link directly">
-            <UInput
-              v-model="form.video_url"
-              placeholder="https://example.com/video.m3u8"
+          <UFormField label="Language">
+            <USelect
+              v-model="form.language"
+              :items="[
+                { label: 'English',    value: 'en' },
+                { label: '한국어',      value: 'ko' },
+                { label: '日本語',      value: 'ja' },
+                { label: '中文',        value: 'zh' },
+                { label: 'Español',    value: 'es' },
+                { label: 'Français',   value: 'fr' },
+                { label: 'Deutsch',    value: 'de' },
+                { label: 'Italiano',   value: 'it' },
+                { label: 'Português',  value: 'pt' },
+                { label: 'Tiếng Việt', value: 'vi' },
+                { label: 'ภาษาไทย',    value: 'th' },
+                { label: 'हिन्दी',       value: 'hi' },
+                { label: 'العربية',    value: 'ar' },
+              ]"
+              value-key="value"
+              label-key="label"
+              placeholder="Select language"
               class="w-full"
             />
           </UFormField>
-          <UFormField label="Or upload from device" class="col-span-2">
-            <div class="space-y-2">
+
+          <!-- Video fields: only for movies -->
+          <template v-if="form.type === 'movie'">
+            <UFormField label="Video URL" class="col-span-2" hint="Paste .mp4 or .m3u8 link directly">
               <UInput
-                type="file"
-                accept="video/mp4,.m3u8"
+                v-model="form.video_url"
+                placeholder="https://example.com/video.m3u8"
                 class="w-full"
-                :disabled="isUploading"
-                @change="uploadVideo"
               />
-              <div v-if="isUploading" class="text-xs text-muted">
-                Uploading video...
+            </UFormField>
+            <UFormField label="Or upload from device" class="col-span-2">
+              <div class="space-y-2">
+                <UInput
+                  type="file"
+                  accept="video/mp4,.m3u8"
+                  class="w-full"
+                  :disabled="isUploading"
+                  @change="uploadVideo"
+                />
+                <div v-if="isUploading" class="text-xs text-muted">
+                  Uploading video...
+                </div>
               </div>
+            </UFormField>
+          </template>
+
+          <!-- Series episode hint -->
+          <template v-else>
+            <div class="col-span-2 flex items-center justify-between rounded-lg border border-dashed border-(--ui-border) bg-(--ui-bg-elevated) px-4 py-3">
+              <div class="flex items-center gap-3">
+                <UIcon name="i-lucide-list-video" class="text-(--ui-text-muted) size-5 shrink-0" />
+                <div>
+                  <p class="text-sm font-medium">
+                    Episodes managed separately
+                  </p>
+                  <p class="text-xs text-(--ui-text-muted)">
+                    <template v-if="selected">
+                      Click "Manage Episodes" to add, edit or delete episodes.
+                    </template>
+                    <template v-else>
+                      After saving, you will be taken straight to episode management.
+                    </template>
+                  </p>
+                </div>
+              </div>
+              <UButton
+                v-if="selected"
+                icon="i-lucide-list-video"
+                size="sm"
+                variant="outline"
+                @click="isOpen = false; openEpisodes(selected!)"
+              >
+                Manage Episodes
+              </UButton>
             </div>
-          </UFormField>
+          </template>
           <UFormField label="Poster URL" class="col-span-2">
             <UInput v-model="form.poster_url" placeholder="https://image.tmdb.org/t/p/w500/..." class="w-full" />
           </UFormField>
@@ -392,6 +489,13 @@ const tagItems = computed(() => allTags.value.map(t => ({ label: t.name, value: 
       v-model:open="tracksOpen"
       :movie-id="tracksMovie.id"
       :movie-title="tracksMovie.title"
+    />
+
+    <EpisodesManager
+      v-if="episodesMovie"
+      v-model:open="episodesOpen"
+      :movie-id="episodesMovie.id"
+      :movie-title="episodesMovie.title"
     />
   </UDashboardPanel>
 </template>
